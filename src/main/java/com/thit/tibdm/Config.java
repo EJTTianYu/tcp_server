@@ -127,8 +127,6 @@ public enum Config {
         everyMachineFrequency = Integer.parseInt(getConfigByKey("every.machine.frequency", "500"));
         realTimeMachineFrequency = Integer.parseInt(getConfigByKey("realtime.machine.frequency", "1000"));
         rawDataSaveSwitch = Boolean.parseBoolean(getConfigByKey("rawdata.save.switch", "true"));
-        kairosdbUrl = getConfigByKey("kairosdb.url", "http://localhost:8080");
-        kairosdbUrlList = Arrays.asList(getConfigByKey("kairosdb.url.list", "http://localhost:8088").split(","));
         redisIp = getConfigByKey("redis.ip", "redis://localhost:6379");
         faultFrequency = Double.parseDouble(getConfigByKey("fault.frequency", "1000"));
         historyDataTime = Integer.parseInt(getConfigByKey("history.data.time", "180")) * 3600 * 24;

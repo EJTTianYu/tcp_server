@@ -26,13 +26,9 @@ public class RollupUtil {
 
     private static final Logger LOGGER= LoggerFactory.getLogger(RollupUtil.class);
 
-    private static HttpClient client;
-
     private static HttpClient ikrClient;
 
     static {
-
-        client = HttpUtil.getInstance().getClient();
         ikrClient = HttpUtil.getInstance().getIkrClient();
     }
 
@@ -49,13 +45,9 @@ public class RollupUtil {
 
         QueryResponse query = null;
         try {
-            query = client.query(queryBuilder);
+            query = ikrClient.query(queryBuilder);
         } catch (IOException e) {
-            try{
-                query = ikrClient.query(queryBuilder);
-            } catch (IOException e1) {
-                LOGGER.error("{}",e1);
-            }
+            LOGGER.error("{}", e);
         }
         List<DataPoint> dataPoints = null;
         try {
@@ -83,13 +75,9 @@ public class RollupUtil {
 
         QueryResponse query = null;
         try {
-            query = client.query(queryBuilder);
+            query = ikrClient.query(queryBuilder);
         } catch (IOException e) {
-            try{
-                query = ikrClient.query(queryBuilder);
-            } catch (IOException e1) {
-                LOGGER.error("{}",e1);
-            }
+            LOGGER.error("{}", e);
         }
         List<DataPoint> dataPoints = null;
         try {
@@ -111,11 +99,6 @@ public class RollupUtil {
      */
 
     public static void delete(String id){
-        try {
-            client.deleteRollup(id);
-        } catch (IOException e) {
-            LOGGER.error("{}",e);
-        }
         try {
             ikrClient.deleteRollup(id);
         } catch (IOException e) {
@@ -179,11 +162,6 @@ public class RollupUtil {
         builder1.setStart(10,TimeUnit.SECONDS);
         builder1.addMetric(metric).addGrouper(new TagGrouper("machine_id"))
                 .addAggregator(AggregatorFactory.createCountAggregator(time1,TimeUnit.MILLISECONDS));
-        try {
-            RollupResponse rollup1 = client.createRollup(builder);
-        } catch (IOException e) {
-            LOGGER.error("发生错误{}",e);
-        }
         try{
             RollupResponse rollup1 = ikrClient.createRollup(builder);
         } catch (IOException e1) {

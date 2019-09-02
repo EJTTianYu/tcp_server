@@ -73,7 +73,7 @@ public class TSDBDemo {
      */
     private void sendKairosdb(MetricBuilder builder) {
         try {
-            HttpClient client = HttpUtil.getInstance().getClient();
+            HttpClient client = HttpUtil.getInstance().getIkrClient();
             client.pushMetrics(builder);
         } catch (IOException e) {
             LOGGER.error("发生异常{}", e);
