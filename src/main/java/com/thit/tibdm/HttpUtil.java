@@ -2,6 +2,8 @@ package com.thit.tibdm;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.thit.tibdm.sender.IkrSenderThread;
+import com.thit.tibdm.sender.KariosSenderThread;
 import org.kairosdb.client.HttpClient;
 import org.kairosdb.client.builder.MetricBuilder;
 import org.kairosdb.client.builder.QueryBuilder;
@@ -107,36 +109,8 @@ public class HttpUtil {
      */
 
     public static void sendKairosdb(MetricBuilder builder) {
-        int count = 0;
-        try {
-            getInstance().getClient().pushMetrics(builder);
-        } catch (IOException e) {
-            LOGGER.error("发生异常{}", e);
-            count += 1;
-        }
-        try {
-            getInstance().getIkrClient().pushMetrics(builder);
-        } catch (IOException e) {
-            LOGGER.error("发生异常{}", e);
-            count += 2;
-        }
-        switch (count) {
-            case 0:
-                if (!builder.getMetrics().get(0).getName().toString().equals("use_rawdata")) {
-                    LOGGER.info("数据写入成功,写入tag为:{}",
-                        builder.getMetrics().get(0).getTags().toString());
-                }
-                break;
-            case 3:
-                LOGGER.error("写入数据异常,写入tag为{}", builder.getMetrics().get(0).getTags().toString());
-                break;
-            case 1:
-                LOGGER.error("写入kairosDB异常,写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
-                break;
-            case 2:
-                LOGGER.error("写入ikr异常，写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
-                break;
-        }
+        new KariosSenderThread(builder).start();
+        new IkrSenderThread(builder).start();
     }
 
     /**
@@ -149,7 +123,6 @@ public class HttpUtil {
         try {
             response = getInstance().getClient().query(builder);
         } catch (IOException e) {
-//            LOGGER.error("发生异常{}", e);
             try {
                 response = getInstance().getIkrClient().query(builder);
             } catch (IOException e1) {
