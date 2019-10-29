@@ -31,9 +31,17 @@ public enum ThreadPoolManager {
      */
     private ExecutorService forwardThread;
     /**
-     * kairosdb存储线程池
+     * kairosdb线程池
      */
     private ExecutorService kairosdbThread;
+    /**
+     * kairosdb存储线程池
+     */
+    private ExecutorService kairosdbSenderThreadPool;
+    /**
+     * ikr存储线程池
+     */
+    private ExecutorService ikrSenderThreadPool;
 
     /**
      * 状态存储线程池
@@ -74,9 +82,18 @@ public enum ThreadPoolManager {
                 8L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(4096), namedThreadFactory, new ThreadPoolExecutor.AbortPolicy());
 
-        kairosdbThread = new ThreadPoolExecutor(128, 1024,
+        kairosdbThread = new ThreadPoolExecutor(24, 1024,
                 8L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(4096), namedThreadFactory, new ThreadPoolExecutor.AbortPolicy());
+
+        kairosdbSenderThreadPool = new ThreadPoolExecutor(128, 1024,
+            8L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(4096), namedThreadFactory, new ThreadPoolExecutor.AbortPolicy());
+
+        ikrSenderThreadPool = new ThreadPoolExecutor(128, 1024,
+            8L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(4096), namedThreadFactory, new ThreadPoolExecutor.AbortPolicy());
+
         connectMonitortimer = new ScheduledThreadPoolExecutor(1, namedThreadFactory);
         MetricMonitor.I.registryGauges("status.pending.job", () -> ((ThreadPoolExecutor) statusThread).getQueue().size());
         MetricMonitor.I.registryGauges("parse.pending.job", () -> ((ThreadPoolExecutor) mqThread).getQueue().size());
@@ -113,5 +130,13 @@ public enum ThreadPoolManager {
 
     public ScheduledExecutorService getConnectMonitorTimer() {
         return connectMonitortimer;
+    }
+
+    public ExecutorService getKairosdbSenderThreadPool() {
+        return kairosdbSenderThreadPool;
+    }
+
+    public ExecutorService getIkrSenderThreadPool() {
+        return ikrSenderThreadPool;
     }
 }

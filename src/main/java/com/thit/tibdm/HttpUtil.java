@@ -107,10 +107,18 @@ public class HttpUtil {
      * 发送数据写入请求
      * @param builder
      */
-
     public static void sendKairosdb(MetricBuilder builder) {
-        new KariosSenderThread(builder).start();
-        new IkrSenderThread(builder).start();
+        try {
+            ThreadPoolManager.I.getKairosdbSenderThreadPool()
+                .submit(new KariosSenderThread(builder));
+        } catch (Exception e) {
+            LOGGER.error("创建KairosDB线程异常:", e);
+        }
+        try {
+            ThreadPoolManager.I.getIkrSenderThreadPool().submit(new IkrSenderThread(builder));
+        } catch (Exception e1) {
+            LOGGER.error("创建ikr线程异常:", e1);
+        }
     }
 
     /**
