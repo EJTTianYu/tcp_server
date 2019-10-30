@@ -6,6 +6,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +23,8 @@ public class SFSServerChannelHandler extends ChannelInboundHandlerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(SFSServerChannelHandler.class);
 
     private static final String STATUS_REQUEST = "status.request";
+
+    private static AtomicInteger packetCnt = new AtomicInteger(0);
 
     /**
      * 收到数据的处理
@@ -43,6 +46,11 @@ public class SFSServerChannelHandler extends ChannelInboundHandlerAdapter {
                     StatusHandler handler = new StatusHandler();
                     handler.handler(packet);
                 });
+                packetCnt.getAndIncrement();
+                if (packetCnt.get() % 50 == 0) {
+                  LOGGER.info("packet接收成功");
+                  packetCnt.set(0);
+                }
                 /**
                  * 状态数据包
                  * 1.发送数据包到kafka中方便解析

@@ -2,6 +2,8 @@ package com.thit.tibdm;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
 import org.kairosdb.client.HttpClient;
 import org.kairosdb.client.builder.MetricBuilder;
 import org.kairosdb.client.builder.QueryBuilder;
@@ -27,6 +29,8 @@ public class HttpUtil {
      * 日志
      */
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpUtil.class);
+
+    private static AtomicInteger packetCnt = new AtomicInteger(0);
 
     /**
      * 静态内部类单例
@@ -105,37 +109,48 @@ public class HttpUtil {
      * 发送数据写入请求
      * @param builder
      */
-
     public static void sendKairosdb(MetricBuilder builder) {
-        int count = 0;
+        FutureTask<Boolean> kairosSendTask = new FutureTask<Boolean>((Callable<Boolean>) () -> {
+            try {
+                getInstance().getClient().pushMetrics(builder);
+                return true;
+            } catch (Exception e) {
+                LOGGER.error("写入Kairos发生异常,写入tag为:{}",
+                    builder.getMetrics().get(0).getTags().toString(), e);
+                return false;
+            }
+        });
+        FutureTask<Boolean> ikrSendTask = new FutureTask<Boolean>((Callable<Boolean>) () -> {
+            try {
+                getInstance().getIkrClient().pushMetrics(builder);
+                return true;
+            } catch (Exception e) {
+                LOGGER.error("发生Ikr异常{},写入tag为:{}",
+                    builder.getMetrics().get(0).getTags().toString(), e);
+                return false;
+            }
+        });
         try {
-            getInstance().getClient().pushMetrics(builder);
-        } catch (IOException e) {
-            LOGGER.error("发生异常{}", e);
-            count += 1;
+            ThreadPoolManager.I.getKairosdbSenderThreadPool().submit(new Thread(kairosSendTask));
+        } catch (Exception e) {
+            LOGGER.error("创建Kairos写入线程异常{}", e);
         }
         try {
-            getInstance().getIkrClient().pushMetrics(builder);
-        } catch (IOException e) {
-            LOGGER.error("发生异常{}", e);
-            count += 2;
+            ThreadPoolManager.I.getKairosdbSenderThreadPool().submit(new Thread(ikrSendTask));
+        } catch (Exception e) {
+            LOGGER.error("创建Ikr写入线程异常{}", e);
         }
-        switch (count) {
-            case 0:
-                if (!builder.getMetrics().get(0).getName().toString().equals("use_rawdata")) {
-                    LOGGER.info("数据写入成功,写入tag为:{}",
-                        builder.getMetrics().get(0).getTags().toString());
+        try {
+            if (kairosSendTask.get() && ikrSendTask.get()) {
+                packetCnt.getAndIncrement();
+                if (packetCnt.get() % 50 == 0) {
+                    LOGGER
+                        .info("数据写入成功,写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
+                    packetCnt.set(0);
                 }
-                break;
-            case 3:
-                LOGGER.error("写入数据异常,写入tag为{}", builder.getMetrics().get(0).getTags().toString());
-                break;
-            case 1:
-                LOGGER.error("写入kairosDB异常,写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
-                break;
-            case 2:
-                LOGGER.error("写入ikr异常，写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
-                break;
+            }
+        } catch (Exception e) {
+            LOGGER.error("写入流程发生异常{}", e);
         }
     }
 
@@ -149,7 +164,6 @@ public class HttpUtil {
         try {
             response = getInstance().getClient().query(builder);
         } catch (IOException e) {
-//            LOGGER.error("发生异常{}", e);
             try {
                 response = getInstance().getIkrClient().query(builder);
             } catch (IOException e1) {
