@@ -47,7 +47,7 @@ public class SFSServerChannelHandler extends ChannelInboundHandlerAdapter {
                     handler.handler(packet);
                 });
                 packetCnt.getAndIncrement();
-                if (packetCnt.get() % 50 == 0) {
+                if (packetCnt.get() % 20 == 0) {
                   LOGGER.info("packet接收成功");
                   packetCnt.set(0);
                 }

@@ -2,8 +2,6 @@ package com.thit.tibdm;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import java.util.concurrent.Callable;
-import java.util.concurrent.FutureTask;
 import org.kairosdb.client.HttpClient;
 import org.kairosdb.client.builder.MetricBuilder;
 import org.kairosdb.client.builder.QueryBuilder;
@@ -110,47 +108,37 @@ public class HttpUtil {
      * @param builder
      */
     public static void sendKairosdb(MetricBuilder builder) {
-        FutureTask<Boolean> kairosSendTask = new FutureTask<Boolean>((Callable<Boolean>) () -> {
-            try {
-                getInstance().getClient().pushMetrics(builder);
-                return true;
-            } catch (Exception e) {
-                LOGGER.error("写入Kairos发生异常,写入tag为:{}",
-                    builder.getMetrics().get(0).getTags().toString(), e);
-                return false;
-            }
-        });
-        FutureTask<Boolean> ikrSendTask = new FutureTask<Boolean>((Callable<Boolean>) () -> {
-            try {
-                getInstance().getIkrClient().pushMetrics(builder);
-                return true;
-            } catch (Exception e) {
-                LOGGER.error("发生Ikr异常{},写入tag为:{}",
-                    builder.getMetrics().get(0).getTags().toString(), e);
-                return false;
-            }
-        });
+        int count = 0;
         try {
-            ThreadPoolManager.I.getKairosdbSenderThreadPool().submit(new Thread(kairosSendTask));
+            getInstance().getClient().pushMetrics(builder);
         } catch (Exception e) {
-            LOGGER.error("创建Kairos写入线程异常{}", e);
+            LOGGER.error("发生异常{}", e);
+            count += 1;
         }
         try {
-            ThreadPoolManager.I.getKairosdbSenderThreadPool().submit(new Thread(ikrSendTask));
+            getInstance().getIkrClient().pushMetrics(builder);
         } catch (Exception e) {
-            LOGGER.error("创建Ikr写入线程异常{}", e);
+            LOGGER.error("发生异常{}", e);
+            count += 2;
         }
-        try {
-            if (kairosSendTask.get() && ikrSendTask.get()) {
+        switch (count) {
+            case 0:
                 packetCnt.getAndIncrement();
                 if (packetCnt.get() % 50 == 0) {
                     LOGGER
                         .info("数据写入成功,写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
                     packetCnt.set(0);
                 }
-            }
-        } catch (Exception e) {
-            LOGGER.error("写入流程发生异常{}", e);
+                break;
+            case 3:
+                LOGGER.error("写入数据异常,写入tag为{}", builder.getMetrics().get(0).getTags().toString());
+                break;
+            case 1:
+                LOGGER.error("写入kairosDB异常,写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
+                break;
+            case 2:
+                LOGGER.error("写入ikr异常，写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
+                break;
         }
     }
 
