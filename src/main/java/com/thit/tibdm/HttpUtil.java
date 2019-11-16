@@ -112,19 +112,19 @@ public class HttpUtil {
         try {
             getInstance().getClient().pushMetrics(builder);
         } catch (Exception e) {
-            LOGGER.error("发生异常{}", e);
+            LOGGER.error("写入kairosDB发生异常{}", e);
             count += 1;
         }
         try {
             getInstance().getIkrClient().pushMetrics(builder);
         } catch (Exception e) {
-            LOGGER.error("发生异常{}", e);
+            LOGGER.error("写入Ikr发生异常{}", e);
             count += 2;
         }
         switch (count) {
             case 0:
                 packetCnt.getAndIncrement();
-                if (packetCnt.get() % 50 == 0) {
+                if (packetCnt.get() % 20 == 0) {
                     LOGGER
                         .info("数据写入成功,写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
                     packetCnt.set(0);
