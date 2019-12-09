@@ -102,6 +102,10 @@ public enum Config {
      * IKR的接收数据端口
      */
     private String ikrUrl;
+    /**
+     * IKR单边写入
+     */
+    private Boolean ikrOnly;
 
 
     /**
@@ -137,6 +141,7 @@ public enum Config {
         warnFilePath = getConfigByKey("warn.filepath", FileHandle.getPath() + "warn");
         dataSendFilePath = getConfigByKey("datasend.filepath", FileHandle.getPath() + "datasend");
         ikrUrl = getConfigByKey("ikr.ip","http://localhost:6666");
+        ikrOnly = Boolean.parseBoolean(getConfigByKey("ikr.only","false"));
     }
 
     /**
@@ -232,5 +237,11 @@ public enum Config {
         return warnFilePath;
     }
 
-    public String getIkrUrl() {return ikrUrl; }
+    public String getIkrUrl() {
+        return ikrUrl;
+    }
+
+    public Boolean getIkrOnly() {
+        return ikrOnly;
+    }
 }

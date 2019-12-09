@@ -58,6 +58,8 @@ public class HttpUtil {
      */
     private AtomicInteger index = new AtomicInteger();
 
+    private static Boolean ikrOnly = Config.I.getIkrOnly();
+
     /**
      * 客户端负载均衡方法
      * @return
@@ -108,37 +110,57 @@ public class HttpUtil {
      * @param builder
      */
     public static void sendKairosdb(MetricBuilder builder) {
-        int count = 0;
-        try {
-            getInstance().getClient().pushMetrics(builder);
-        } catch (Exception e) {
-            LOGGER.error("写入kairosDB发生异常{}", e);
-            count += 1;
+        if (ikrOnly){
+            try {
+                getInstance().getIkrClient().pushMetrics(builder);
+            } catch (Exception e) {
+                LOGGER.error("写入Ikr发生异常{}", e);
+            }
+            packetCnt.getAndIncrement();
+            if (packetCnt.get() % 20 == 0) {
+                LOGGER
+                    .info("数据写入Ikr成功,写入tag为:{}",
+                        builder.getMetrics().get(0).getTags().toString());
+                packetCnt.set(0);
+            }
         }
-        try {
-            getInstance().getIkrClient().pushMetrics(builder);
-        } catch (Exception e) {
-            LOGGER.error("写入Ikr发生异常{}", e);
-            count += 2;
-        }
-        switch (count) {
-            case 0:
-                packetCnt.getAndIncrement();
-                if (packetCnt.get() % 20 == 0) {
+        else {
+            int count = 0;
+            try {
+                getInstance().getClient().pushMetrics(builder);
+            } catch (Exception e) {
+                LOGGER.error("写入kairosDB发生异常{}", e);
+                count += 1;
+            }
+            try {
+                getInstance().getIkrClient().pushMetrics(builder);
+            } catch (Exception e) {
+                LOGGER.error("写入Ikr发生异常{}", e);
+                count += 2;
+            }
+            switch (count) {
+                case 0:
+                    packetCnt.getAndIncrement();
+                    if (packetCnt.get() % 20 == 0) {
+                        LOGGER
+                            .info("数据写入成功,写入tag为:{}",
+                                builder.getMetrics().get(0).getTags().toString());
+                        packetCnt.set(0);
+                    }
+                    break;
+                case 3:
                     LOGGER
-                        .info("数据写入成功,写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
-                    packetCnt.set(0);
-                }
-                break;
-            case 3:
-                LOGGER.error("写入数据异常,写入tag为{}", builder.getMetrics().get(0).getTags().toString());
-                break;
-            case 1:
-                LOGGER.error("写入kairosDB异常,写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
-                break;
-            case 2:
-                LOGGER.error("写入ikr异常，写入tag为:{}", builder.getMetrics().get(0).getTags().toString());
-                break;
+                        .error("写入数据异常,写入tag为{}", builder.getMetrics().get(0).getTags().toString());
+                    break;
+                case 1:
+                    LOGGER.error("写入kairosDB异常,写入tag为:{}",
+                        builder.getMetrics().get(0).getTags().toString());
+                    break;
+                case 2:
+                    LOGGER.error("写入ikr异常，写入tag为:{}",
+                        builder.getMetrics().get(0).getTags().toString());
+                    break;
+            }
         }
     }
 
