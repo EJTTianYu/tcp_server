@@ -106,6 +106,10 @@ public enum Config {
      * IKR单边写入
      */
     private Boolean ikrOnly;
+    /**
+     *
+     */
+    private int timeout;
 
 
     /**
@@ -142,6 +146,7 @@ public enum Config {
         dataSendFilePath = getConfigByKey("datasend.filepath", FileHandle.getPath() + "datasend");
         ikrUrl = getConfigByKey("ikr.ip","http://localhost:6666");
         ikrOnly = Boolean.parseBoolean(getConfigByKey("ikr.only","false"));
+        timeout = Integer.parseInt(getConfigByKey("http.timeout", "-1"));
     }
 
     /**
@@ -243,5 +248,9 @@ public enum Config {
 
     public Boolean getIkrOnly() {
         return ikrOnly;
+    }
+
+    public int getTimeout() {
+        return timeout;
     }
 }

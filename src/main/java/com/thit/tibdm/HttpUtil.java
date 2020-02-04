@@ -92,6 +92,7 @@ public class HttpUtil {
             try {
                 client = new HttpClient(http);
                 client.setMaxTotal(128);
+                client.setTimeout(Config.I.getTimeout());
             } catch (MalformedURLException e) {
                 LOGGER.error("发生异常{}", e);
             }
@@ -100,6 +101,7 @@ public class HttpUtil {
         try {
             ikrClient = new HttpClient(Config.I.getIkrUrl());
             ikrClient.setMaxTotal(128);
+            ikrClient.setTimeout(Config.I.getTimeout());
         }catch (MalformedURLException e) {
             LOGGER.error("发生异常{}", e);
         }

@@ -1,0 +1,157 @@
+diff --git a/src/main/java/com/thit/tibdm/HttpUtil.java b/src/main/java/com/thit/tibdm/HttpUtil.java
+index 6aa8539..902d457 100755
+--- a/src/main/java/com/thit/tibdm/HttpUtil.java
++++ b/src/main/java/com/thit/tibdm/HttpUtil.java
+@@ -28,6 +28,8 @@ public class HttpUtil {
+      */
+     private static final Logger LOGGER = LoggerFactory.getLogger(HttpUtil.class);
+ 
++    private static AtomicInteger packetCnt = new AtomicInteger(0);
++
+     /**
+      * 静态内部类单例
+      */
+@@ -56,6 +58,8 @@ public class HttpUtil {
+      */
+     private AtomicInteger index = new AtomicInteger();
+ 
++    private static Boolean ikrOnly = Config.I.getIkrOnly();
++
+     /**
+      * 客户端负载均衡方法
+      * @return
+@@ -65,11 +69,25 @@ public class HttpUtil {
+         return clients.get(listIndex);
+     }
+ 
++    /**
++     * IKR的客户端
++     */
++    private HttpClient ikrClient;
++
++    /**
++     * 客户端负载均衡方法
++     * @return
++     */
++    public HttpClient getIkrClient(){
++        return ikrClient;
++    }
++
+     /**
+      * 私有构造类
+      */
+     private HttpUtil() {
+         LOGGER.info(Config.I.getKairosdbUrlList().toString());
++        LOGGER.info(Config.I.getIkrUrl());
+         Config.I.getKairosdbUrlList().forEach(http -> {
+             try {
+                 client = new HttpClient(http);
+@@ -79,6 +97,12 @@ public class HttpUtil {
+             }
+             clients.add(client);
+         });
++        try {
++            ikrClient = new HttpClient(Config.I.getIkrUrl());
++            ikrClient.setMaxTotal(128);
++        }catch (MalformedURLException e) {
++            LOGGER.error("发生异常{}", e);
++        }
+     }
+ 
+     /**
+@@ -86,10 +110,57 @@ public class HttpUtil {
+      * @param builder
+      */
+     public static void sendKairosdb(MetricBuilder builder) {
+-        try {
+-            getInstance().getClient().pushMetrics(builder);
+-        } catch (IOException e) {
+-            LOGGER.error("发生异常{}", e);
++        if (ikrOnly){
++            try {
++                getInstance().getIkrClient().pushMetrics(builder);
++            } catch (Exception e) {
++                LOGGER.error("写入Ikr发生异常{}", e);
++            }
++            packetCnt.getAndIncrement();
++            if (packetCnt.get() % 20 == 0) {
++                LOGGER
++                    .info("数据写入Ikr成功,写入tag为:{}",
++                        builder.getMetrics().get(0).getTags().toString());
++                packetCnt.set(0);
++            }
++        }
++        else {
++            int count = 0;
++            try {
++                getInstance().getClient().pushMetrics(builder);
++            } catch (Exception e) {
++                LOGGER.error("写入kairosDB发生异常{}", e);
++                count += 1;
++            }
++            try {
++                getInstance().getIkrClient().pushMetrics(builder);
++            } catch (Exception e) {
++                LOGGER.error("写入Ikr发生异常{}", e);
++                count += 2;
++            }
++            switch (count) {
++                case 0:
++                    packetCnt.getAndIncrement();
++                    if (packetCnt.get() % 20 == 0) {
++                        LOGGER
++                            .info("数据写入成功,写入tag为:{}",
++                                builder.getMetrics().get(0).getTags().toString());
++                        packetCnt.set(0);
++                    }
++                    break;
++                case 3:
++                    LOGGER
++                        .error("写入数据异常,写入tag为{}", builder.getMetrics().get(0).getTags().toString());
++                    break;
++                case 1:
++                    LOGGER.error("写入kairosDB异常,写入tag为:{}",
++                        builder.getMetrics().get(0).getTags().toString());
++                    break;
++                case 2:
++                    LOGGER.error("写入ikr异常，写入tag为:{}",
++                        builder.getMetrics().get(0).getTags().toString());
++                    break;
++            }
+         }
+     }
+
+diff --git a/src/main/java/com/thit/tibdm/server/SFSServerChannelHandler.java b/src/main/java/com/thit/tibdm/server/SFSServerChannelHandler.java
+index 88a4de8..e1f7ca4 100755
+--- a/src/main/java/com/thit/tibdm/server/SFSServerChannelHandler.java
++++ b/src/main/java/com/thit/tibdm/server/SFSServerChannelHandler.java
+@@ -6,6 +6,7 @@ import io.netty.buffer.ByteBuf;
+ import io.netty.channel.ChannelHandler;
+ import io.netty.channel.ChannelHandlerContext;
+ import io.netty.channel.ChannelInboundHandlerAdapter;
++import java.util.concurrent.atomic.AtomicInteger;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+@@ -23,6 +24,8 @@ public class SFSServerChannelHandler extends ChannelInboundHandlerAdapter {
+ 
+     private static final String STATUS_REQUEST = "status.request";
+ 
++    private static AtomicInteger packetCnt = new AtomicInteger(0);
++
+     /**
+      * 收到数据的处理
+      *
+@@ -43,6 +46,11 @@ public class SFSServerChannelHandler extends ChannelInboundHandlerAdapter {
+                     StatusHandler handler = new StatusHandler();
+                     handler.handler(packet);
+                 });
++                packetCnt.getAndIncrement();
++                if (packetCnt.get() % 20 == 0) {
++                  LOGGER.info("packet接收成功");
++                  packetCnt.set(0);
++                }
+                 /**
+                  * 状态数据包
+                  * 1.发送数据包到kafka中方便解析
+
