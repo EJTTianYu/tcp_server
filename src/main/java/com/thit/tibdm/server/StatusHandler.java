@@ -50,7 +50,7 @@ public class StatusHandler {
                 new RawDataSaveJob(String.valueOf(statusMessage.getCh()),
                         statusMessage.getTime(),
                         statusMessage.getDeviceId(),
-                        HexUtil.getFrame(statusMessage.getUsedBinary(), ""),
+                        HexUtil.getFrame(statusMessage.getRawBinary(), ""),
                         statusMessage.getSerialNumber()));
         ThreadPoolManager.I.getForwardThread().submit(
                 new ForwardJob(statusMessage.getRawBinary(), statusMessage.getCh()));

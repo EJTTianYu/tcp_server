@@ -1,6 +1,7 @@
 package com.thit.tibdm;
 
 import io.netty.buffer.ByteBuf;
+import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +35,7 @@ public class DateUtil {
      */
     public static long getTimeStame(ByteBuf in) {
         DateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+        sdf.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
         StringBuffer time = new StringBuffer();
         time.append("20");
         time.append(DateUtil.getAddZero(in.getUnsignedByte(16)));
